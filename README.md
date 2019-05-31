@@ -60,29 +60,3 @@ NMT Projects
 
 * [THUMT](https://github.com/THUNLP-MT/THUMT)
 
-<h2 id="techinique">Experiments Notes</h2>
-
-1. NMT architecture : transformer
-2. 7 steps for preprocessing
-3. BPE=32k, 4 gpus, 2500w, en-zh + zh-en
-4. Performance : amun speed (200ms) // transformer speed (400ms)
-5. BLEU : amun (19) // transformer (22.92) (zh-en)
-6. average drop bleu for dev-set
-7. ensemble is not costing much performance (can be used with different architectures but have to be the same vocab files.)
-   
-* QPS :
-1080TI
-trans : 2 processes, 2 GPUS (6.9)
-amun : 2 processes, 2 GPUS (11)
-
-<h2 id="techinique">Future Experiments Notes</h2>
-
-* Back-Translation
-* R2L Reranking
-* ULR (universal lexical representation) for low-resource corpus
-* Domain Adaptation
-* Document level translation
-* Auto-Ensemble methods
-* PRE-POS-UNK replacement methods
-* MPI training for large-scale
-* BERT for encoding part
