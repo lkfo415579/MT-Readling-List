@@ -1,31 +1,48 @@
 Experiments
 -----
-Performance Enhancement
+**Performance Enhancement**
 - Back-Translation
 
     Using a baseline model to translate a mono big corpus. then put the
     translated(MT corpus) text back to original corpus then retrain it.
-    (Not getting great result so far)
+    
+    State : training sample + noise
+    
+    Result : beam search +0.4 BLEU (500w + 800w MT corpus)
 - Knowledge Distiliation
 
   1.    Using a teacher model (BIG-transformer) generates corpus from
         original trained source corpus? (or a new mono corpus)
   2. create a small model with lower parameters then train the MT-corpus purely.
+  
+  State : retraing by using sample + noise corpus
+  
+  Result : 500w MT corpus (23.83 BLEU), 800w MT corpus (24.5 BLEU),
+  Base-small: (23.65), Base (27.41)
 - Competence Learning
 
   1.   Calculate Freq + CDF from source corpus
   2.   make sure the model is learning easy sents first then move to
        hard sents though timestep. 
        
-  paper claims : x0.4 train time and 2.2+ BLEU.
+  paper claims : x0.4 train time and +2.2 BLEU.
     
     Result the same as baseline
 - Warmup Tuning
 
     Paper said WMT is used 10k. Marian is used 16k. Tried : 20k, 30k.
     (almost the same BLEU)
+    
+- AdaBound
 
-Low Resources
+    2019 which is better than Adam optimizer.
+    
+- Target space Embedding
+    
+    There is a 32x512 embedding is sougou's code. the space matrix +
+    scaledEmbedding.
+
+**Low Resources**
 - ULR
 
     Qe is hard to be generated. (Using SVD) **align your
@@ -47,6 +64,10 @@ Low Resources
 
     Sugou is using char-level (zh2en), source code shows no change in
     input layer.
+    
+    Notes : Deocder consumes large memory of gpu. (10Gb in beam search) 
+    
+    Result : **25 BLEU** (BASE : 27.41 BLEU)
 
 - Multi-Languages
 
@@ -56,12 +77,57 @@ Low Resources
   3.    concatenate all corpus together
   4.    train!
 
+**NMT Architecture**
+- WorkFlow
+  0.   **Input Layer**
+  1.   x_(max_len, 256) = Text -> Word-Embedding (30000, 256)
+  2.   x_(max_len, 512) = (x_ X Emb-Scale(256, 512)) + Emb-Scale-bias(1,
+       512\)
+  3.   x_(max_len, 512) = x_ * sqrt(512) + Pos_emb(max_len, 512) 
+  5.   **Encoder Layer, 6 layers**
+  -   y_ = x_
+  -   x_ = MultiHeads(x_, y_, y_)
+  -   x_ = Residual(x_, y_)
+  -   y_ = x_
+  -   x_ = FFN(x_)
+  -   x_ = Residual(x_, y_)
+  -   **Repeat 6 times**
+  -   context_ = x_
+  6.  **Decoder Input Layer**
+  -  x_ = x_ X target-Emb-Scale(512, 256) + target-Emb-Scale-bias (1,
+     256\)
+  -  x_ = x_ X target-Word-Embedding (256, 20000)
+  -  x_ = Reshape(x_, {beam, batch, max_len, vec_dim})
+  7.  **Decoder Layer, 6 layers**
+  -   y_ = x_
+  -   x_ = MultiHeads(x_, y_, y_)
+  -   x_ = Residual(x_, y_)
+  -   y_ = x_
+  -   x_ = MultiHeads(x_, context_, context_)
+  -   x_ = Residual(x_, y_)
+  -   x_ = FFN(x_)
+  -   x_ = Residual(x_, y_)
+  7.   **Output Layer**
+  -   x_ = x_ X SoftMax_U(512, 256) + SoftMax_U_bias(1, 256)
+  -   x_ = x_ X SoftMax_V(256, 20000)
+  
+- Component
+  -   MultiHeads (Q, K, V)
+  
+      
+  -   Residual (x_, y_)
+  
+      x_ = LayerNorm(x_ + y_)
+
 Decoding
 -------
 - QKV concatenate computing
 
     When Run Multi-heads layer, first calculate these 3 matrix once.
     (512 X3, D.model)
+    
+    State : unable to train a well model with beam search decoding.
+    (Don't know WHY, ce-mean is fine)
 - input Emb with using *256 & half-precision* (Save storage)
 
   1.   First retrieve max_sent_len
